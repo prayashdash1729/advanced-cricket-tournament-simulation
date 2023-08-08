@@ -14,7 +14,7 @@ class Player:
         return f"{self.name} {self.bowling} {self.batting} {self.fielding} {self.running} {self.experience}"
 
 
-class Team(Player):
+class Team():
     def __init__(self, name):
         self.name = name
         self.players = []
@@ -68,14 +68,14 @@ class Field(Team):
         self.field_size['breadth'] = min(dim1, dim2)
         self.pitch_condition = random.choice(['dry', 'wet', 'damp'])
         if self.pitch_condition == 'dry':
-            self.x_bowling = random.randint(30, 60) / 100
-            self.x_batting = random.randint(60, 90) / 100
-        elif self.pitch_condition == 'wet':
             self.x_bowling = random.randint(70, 90) / 100
             self.x_batting = random.randint(50, 90) / 100
+        elif self.pitch_condition == 'wet':
+            self.x_bowling = random.randint(30, 60) / 100
+            self.x_batting = random.randint(60, 90) / 100
         else:
-            self.x_bowling = random.randint(60, 90) / 100
-            self.x_batting = random.randint(20, 40) / 100
+            self.x_bowling = random.randint(45, 55) / 100
+            self.x_batting = random.randint(45, 55) / 100
 
         self.home_team = random.choice([self.team1, self.team2])
         self.away_team = self.team1 if self.home_team == self.team2 else self.team2
@@ -86,7 +86,7 @@ class Field(Team):
         print(f"Field is set with following properties:\n")
         print(f"Length: {self.field_size['length']}m\nBreadth: {self.field_size['breadth']}m\n")
         print(f"Home team: {self.home_team.name}\n")
-        print(f"Fan ratio: {self.home_team.name} {self.fan_ratio[self.home_team.name]} and {self.away_team.name}{self.fan_ratio[self.team2.name]}")
+        print(f"Fan ratio: {self.home_team.name} {self.fan_ratio[self.home_team.name]} and {self.away_team.name} {self.fan_ratio[self.away_team.name]}")
 
     def get_field(self):
         return self.field_size, self.home_team, self.away_team, self.fan_ratio
@@ -102,8 +102,10 @@ class Umpire(Field):
         # self.team2 = team2
         self.field = field
         self.winner = None
+        self.win_type = None
         self.field = field
         self.max_overs = 5
+        self.pre_score = 0
         self.overs = 0.0
         self.innings = 0
         self.target = 0
@@ -170,7 +172,10 @@ class Umpire(Field):
         self.overs += 0.1  # Assuming each over has 6 balls
         if round(self.overs - self.overs//1, 1) == 0.6 and self.overs != 0 and self.overs != 5:
             self.overs = self.overs//1 + 1
-            print(f"{self.overs} overs completed. Strike change for {self.batting_team.name}")
+            print(f"{self.overs} overs completed. {self.scores - self.pre_score} runs scored in this over.\n"
+                  f"Score: {self.scores}/{self.wickets}, CRR: {self.scores/self.overs}\n"
+                  f"Strike change for {self.bowling_team.name}\n")
+            self.pre_score = self.scores
 
 
 class Match(Umpire):
@@ -190,8 +195,9 @@ class Match(Umpire):
 
         self.umpire.target = self.umpire.scores + 1
 
-        print(f"First innings completed. "
-              f"{self.umpire.batting_team.name} scored {self.umpire.scores} runs at a loss of {self.umpire.wickets} wickets.")
+        print(f"\n\nFirst innings completed. "
+              f"{self.umpire.batting_team.name} scored {self.umpire.scores} "
+              f"runs at a loss of {self.umpire.wickets} wickets.\n\n")
 
         self.umpire.innings = 2
         self.umpire.batting_team, self.umpire.bowling_team = self.umpire.bowling_team, self.umpire.batting_team
@@ -205,17 +211,23 @@ class Match(Umpire):
 
         if self.umpire.scores >= self.umpire.target:
             self.umpire.winner = self.umpire.batting_team
+            self.umpire.win_type = "by wickets"
         elif self.umpire.scores == self.umpire.target - 1:
             self.umpire.winner = "Tie"
         else:
             self.umpire.winner = self.umpire.bowling_team
+            self.umpire.win_type = "by runs"
 
-        print("Second innings completed")
+        print("\n\nSecond innings completed\n")
+        if self.umpire.win_type == "by wickets":
+            print(f"{self.umpire.winner.name} won the match by {10 - self.umpire.wickets} wickets")
+        elif self.umpire.win_type == "by runs":
+            print(f"{self.umpire.winner.name} won the match by {self.umpire.target - self.umpire.scores} runs")
 
         if self.umpire.winner == "Tie":
             print("Match tied")
-        else:
-            print(f"{self.umpire.winner.name} won the match")
+        # else:
+            # print(f"{self.umpire.winner.name} won the match")
 
         print("Match completed")
 
