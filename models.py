@@ -9,16 +9,21 @@ class Player:
         self.fielding = fielding
         self.running = running
         self.experience = experience
+        self.overs_bowled = 0
+        self.runs_scored = 0
+        self.out = False
 
     def __str__(self):
         return f"{self.name} {self.bowling} {self.batting} {self.fielding} {self.running} {self.experience}"
 
 
-class Team():
+class Team(Player):
     def __init__(self, name):
         self.name = name
         self.players = []
         self.captain = None
+        self.batting_order = []
+        self.bowling_order = []
 
     def add_player(self, name, bowling, batting, fielding, running, experience):
         if len(self.players) >= 15:
@@ -30,14 +35,36 @@ class Team():
         player = Player(name, bowling, batting, fielding, running, experience)
         self.players.append(player)
 
-    def choose_captain(self, name):
+    def choose_captain(self):
+        max_score = 0
         for player in self.players:
-            if player.name == name:
+            player_score = player.batting + player.experience
+            if player_score > max_score:
+                max_score = player_score
                 self.captain = player
-                print(f"{player.name} is now the captain of {self.name}")
-                return
 
-        print(f"No player named {name} in {self.name}")
+        print(f"Captain of team {self.name} is: {self.captain.name}")
+
+    def choose_batting_order(self):
+        self.batting_order = sorted(self.players, key=lambda x: (x.batting + x.running), reverse=True)
+        self.batting_order = self.batting_order[:5]
+        print(f"\nBatting order of team {self.name} is: {[player.name for player in self.batting_order]}")
+
+    def choose_bowling_order(self):
+        self.bowling_order = sorted(self.players, key=lambda x: x.bowling, reverse=True)
+        print(f"Bowling order of team {self.name} is: {[player.name for player in self.bowling_order]}\n\n")
+
+    def next_batsman(self):
+        self.batting_order.pop(0)
+        if len(self.batting_order) == 0:
+            print(f"An all out for team {self.name}")
+            return
+        else:
+            print(f"Next batsman for team {self.name} is: {self.batting_order[0].name}")
+            return self.batting_order[0]
+
+    def next_bowler(self, overs):
+        return self.bowling_order[overs % self.bowling_order.__len__()]
 
     def get_captain(self):
         return self.captain
@@ -105,8 +132,11 @@ class Umpire(Field):
         self.win_type = None
         self.field = field
         self.max_overs = 5
+        self.max_bowled_overs = max(1, self.max_overs//5)
         self.pre_score = 0
         self.overs = 0.0
+        self.batsman = None
+        self.bowler = None
         self.innings = 0
         self.target = 0
         self.batting_team = None
@@ -126,10 +156,13 @@ class Umpire(Field):
             self.innings = 1
 
         win_team = random.choice(['bat', 'bowl'])
-        # if win_team == 'bat':
-        #     print(f"{self.batting_team.name} won the toss and decided to bat first")
-        # else:
-        #     print(f"{self.bowling_team.name} won the toss and decided to bowl first")
+        if win_team == 'bat':
+            print(f"{self.batting_team.name} won the toss and decided to bat first")
+        else:
+            print(f"{self.bowling_team.name} won the toss and decided to bowl first")
+
+        self.batsman = self.batting_team.next_batsman()
+        self.bowler = self.bowling_team.next_bowler(self.overs)
 
     def predict_outcome(self):
         # Probabilities for different pitch conditions and events
@@ -164,17 +197,22 @@ class Umpire(Field):
 
     def update_score(self, runs):
         self.scores += runs
+        self.batsman.runs_scored += runs
 
     def update_wickets(self):
         self.wickets += 1
+        self.batsman.out = True
+        self.batsman = self.batting_team.next_batsman()
 
     def update_overs(self):
         self.overs += 0.1  # Assuming each over has 6 balls
-        if round(self.overs - self.overs//1, 1) == 0.6 and self.overs != 0 and self.overs != 5:
+        if round(self.overs - self.overs//1, 1) == 0.6:
             self.overs = self.overs//1 + 1
             print(f"{self.overs} overs completed. {self.scores - self.pre_score} runs scored in this over.\n"
                   f"Score: {self.scores}/{self.wickets}, CRR: {self.scores/self.overs}\n"
                   f"Strike change for {self.bowling_team.name}\n")
+            self.bowler.overs_bowled += 1
+            self.bowler = self.bowling_team.next_bowler(self.overs)
             self.pre_score = self.scores
 
 
@@ -190,7 +228,7 @@ class Match(Umpire):
     def start_match(self):
         self.umpire.toss()
 
-        while self.umpire.wickets <= 9 and self.umpire.overs <= self.umpire.max_overs:
+        while self.umpire.wickets <= 9 and self.umpire.overs < self.umpire.max_overs:
             self.umpire.predict_outcome()
 
         self.umpire.target = self.umpire.scores + 1
@@ -205,7 +243,7 @@ class Match(Umpire):
         self.umpire.scores = 0
         self.umpire.wickets = 0
 
-        while self.umpire.wickets <= 9 and self.umpire.overs <= self.umpire.max_overs and self.umpire.scores < self.umpire.target:
+        while self.umpire.wickets <= 9 and self.umpire.overs < self.umpire.max_overs and self.umpire.scores < self.umpire.target:
             self.umpire.predict_outcome()
             # print("test")
 
